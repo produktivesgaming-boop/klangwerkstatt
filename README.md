@@ -18,6 +18,21 @@ Jede Datei landet als `cc0-N.<ext>` oder `ki-N.mp3` im Unterordner `<kennung>`,
 und `herkunft.json` haelt zu jeder Datei Titel, Quellseite und Lizenz fest.
 Ohne diesen Nachweis gehoert kein Asset ins Spiel.
 
+Zum Anhoeren und Auswaehlen gibt es zwei weitere Befehle. Die Oberflaeche baut
+jedes Projekt selbst, geteilt sind nur die Daten und die Uebernahme.
+
+    node <submodul>/bin/verzeichnis.mjs --ordner public/audio/vorschlaege \
+                                        --netzpfad /audio/vorschlaege
+
+gibt alle gesammelten Kennungen mit ihren Kandidaten als JSON aus, inklusive
+Adresse zum Abspielen und Nachweis je Datei.
+
+    node <submodul>/bin/uebernehmen.mjs --quelle <kandidat> --ziel <klangdatei>
+
+wandelt den gewaehlten Kandidaten ins Format der Zieldatei und bringt ihn auf
+einen einheitlichen Pegel. Ohne das sind CC0-Funde hoerbar lauter oder leiser
+als erzeugte Klaenge. Braucht ffmpeg im PATH.
+
 QUELLEN
 -------
 - **OpenGameArt** (`quellen/opengameart.mjs`): Suche mit Filter auf Klaenge und
