@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as opengameart from '../quellen/opengameart.mjs';
 import * as kenney from '../quellen/kenney.mjs';
 import * as elevenlabs from '../quellen/elevenlabs.mjs';
@@ -52,6 +53,14 @@ function melde(dateiname, daten, quelle, titel) {
   console.log(`${dateiname.padEnd(12)}${Math.round(daten.length / 1024)} KB  ${quelle}  ${titel.slice(0, 44)}`);
 }
 
+export function naechsteNummer(dateinamen, praefix) {
+  const belegt = dateinamen
+    .filter((name) => name.startsWith(`${praefix}-`))
+    .map((name) => Number(name.slice(praefix.length + 1).split('.')[0]))
+    .filter((nummer) => Number.isInteger(nummer) && nummer > 0);
+  return belegt.length ? Math.max(...belegt) + 1 : 1;
+}
+
 function ablegen(ordner, dateiname, daten, fund) {
   fs.writeFileSync(path.join(ordner, dateiname), daten);
   melde(dateiname, daten, fund.quelle, fund.titel);
@@ -61,12 +70,13 @@ function ablegen(ordner, dateiname, daten, fund) {
 
 async function sammleCc0(ordner, suche, jeQuelle) {
   const vermerkt = [];
+  const ab = naechsteNummer(fs.readdirSync(ordner), 'cc0');
   for (const quelle of [opengameart, kenney]) {
     for (const fund of await quelle.finde(suche, jeQuelle)) {
       const daten = fund.pfad ? fs.readFileSync(fund.pfad) : await lade(fund.url);
       if (!daten) continue;
       const endung = path.extname(fund.pfad || fund.url).toLowerCase();
-      vermerkt.push(ablegen(ordner, `cc0-${vermerkt.length + 1}${endung}`, daten, fund));
+      vermerkt.push(ablegen(ordner, `cc0-${ab + vermerkt.length}${endung}`, daten, fund));
     }
   }
   return vermerkt;
@@ -78,9 +88,10 @@ async function erzeugeKi(ordner, wuensche, sekunden) {
     return [];
   }
   const vermerkt = [];
+  const ab = naechsteNummer(fs.readdirSync(ordner), 'ki');
   for (const [i, wunsch] of wuensche.entries()) {
     const klang = await elevenlabs.erzeuge(wunsch, { sekunden });
-    vermerkt.push(ablegen(ordner, `ki-${i + 1}.mp3`, klang.daten, { ...klang, titel: wunsch }));
+    vermerkt.push(ablegen(ordner, `ki-${ab + i}.mp3`, klang.daten, { ...klang, titel: wunsch }));
   }
   return vermerkt;
 }
@@ -106,4 +117,9 @@ async function sammle() {
   console.log(`\n${vermerkt.length} Kandidaten in ${ordner}, Herkunft in ${NACHWEIS}`);
 }
 
-sammle().catch((fehler) => { console.error(fehler.message); process.exit(1); });
+const alsBefehlGestartet = process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (alsBefehlGestartet) {
+  sammle().catch((fehler) => { console.error(fehler.message); process.exit(1); });
+}
