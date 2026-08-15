@@ -5,10 +5,12 @@ import { execFileSync } from 'node:child_process';
 import * as opengameart from '../quellen/opengameart.mjs';
 import * as kenney from '../quellen/kenney.mjs';
 import * as elevenlabs from '../quellen/elevenlabs.mjs';
+import { zerlege, istSammeldatei, raeumeAuf } from '../quellen/zerlegen.mjs';
 
 const NACHWEIS = 'herkunft.json';
 const LAENGENFAKTOR = 3;
 const MINDESTFENSTER = 2;
+const TEILE_JE_SAMMELDATEI = 4;
 
 function hilfe() {
   console.log(`Klangwerkstatt -- Kandidaten fuer einen Klang sammeln
@@ -87,6 +89,21 @@ export function istBrauchbar(dauer, gewuenscht) {
   return dauer <= Math.max(gewuenscht * LAENGENFAKTOR, MINDESTFENSTER);
 }
 
+function nimmSammeldatei(ordner, dateiname, fund, gewuenscht, ab) {
+  const pfad = path.join(ordner, dateiname);
+  const erlaubt = Math.max(gewuenscht * LAENGENFAKTOR, MINDESTFENSTER);
+  const teile = zerlege(pfad, erlaubt, TEILE_JE_SAMMELDATEI);
+  raeumeAuf(pfad);
+
+  return teile.map((teil, i) => {
+    const name = `cc0-${ab + i}.ogg`;
+    fs.renameSync(teil.datei, path.join(ordner, name));
+    melde(name, fs.readFileSync(path.join(ordner, name)), fund.quelle, `${fund.titel} (${teil.dauer} s)`);
+    return { datei: name, titel: `${fund.titel}, Teil ${i + 1}`, herkunft: fund.herkunft,
+      lizenz: fund.lizenz, quelle: fund.quelle };
+  });
+}
+
 async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
   const vermerkt = [];
   let ab = naechsteNummer(fs.readdirSync(ordner), 'cc0');
@@ -98,9 +115,18 @@ async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
       const dateiname = `cc0-${ab}${endung}`;
       const eintrag = ablegen(ordner, dateiname, daten, fund);
       const dauer = dauerVon(path.join(ordner, dateiname));
+
+      if (istSammeldatei(dauer, sekunden)) {
+        console.log(`   ${fund.titel} ist ${dauer.toFixed(1)} s lang, wird an den Stillen zerlegt`);
+        const teile = nimmSammeldatei(ordner, dateiname, fund, sekunden, ab);
+        vermerkt.push(...teile);
+        ab += teile.length;
+        continue;
+      }
+
       if (!istBrauchbar(dauer, sekunden)) {
         fs.unlinkSync(path.join(ordner, dateiname));
-        console.log(`   verworfen: ${fund.titel} ist ${dauer.toFixed(1)} s lang, gesucht sind ${sekunden} s`);
+        console.log(`   verworfen: ${fund.titel} laesst sich nicht in Einzelklaenge trennen`);
         continue;
       }
       vermerkt.push(eintrag);
