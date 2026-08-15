@@ -48,50 +48,58 @@ function schreibeNachweis(ordner, eintraege) {
   fs.writeFileSync(pfad, JSON.stringify(neu, null, 2), 'utf8');
 }
 
+function melde(dateiname, daten, quelle, titel) {
+  console.log(`${dateiname.padEnd(12)}${Math.round(daten.length / 1024)} KB  ${quelle}  ${titel.slice(0, 44)}`);
+}
+
+function ablegen(ordner, dateiname, daten, fund) {
+  fs.writeFileSync(path.join(ordner, dateiname), daten);
+  melde(dateiname, daten, fund.quelle, fund.titel);
+  return { datei: dateiname, titel: fund.titel, herkunft: fund.herkunft,
+    lizenz: fund.lizenz, quelle: fund.quelle };
+}
+
+async function sammleCc0(ordner, suche, jeQuelle) {
+  const vermerkt = [];
+  for (const quelle of [opengameart, kenney]) {
+    for (const fund of await quelle.finde(suche, jeQuelle)) {
+      const daten = fund.pfad ? fs.readFileSync(fund.pfad) : await lade(fund.url);
+      if (!daten) continue;
+      const endung = path.extname(fund.pfad || fund.url).toLowerCase();
+      vermerkt.push(ablegen(ordner, `cc0-${vermerkt.length + 1}${endung}`, daten, fund));
+    }
+  }
+  return vermerkt;
+}
+
+async function erzeugeKi(ordner, wuensche, sekunden) {
+  if (elevenlabs.schluesselFehlt()) {
+    console.log('ELEVENLABS_API_KEY fehlt, die erzeugten Vorschlaege entfallen.');
+    return [];
+  }
+  const vermerkt = [];
+  for (const [i, wunsch] of wuensche.entries()) {
+    const klang = await elevenlabs.erzeuge(wunsch, { sekunden });
+    vermerkt.push(ablegen(ordner, `ki-${i + 1}.mp3`, klang.daten, { ...klang, titel: wunsch }));
+  }
+  return vermerkt;
+}
+
 async function sammle() {
   const kennung = process.argv[2];
   const wurzel = argument('ordner');
   const suche = argument('suche');
   const kiWuensche = alleArgumente('ki');
-  const jeQuelle = Number(argument('cc0', '2'));
-  const sekunden = Number(argument('sekunden', '1.2'));
 
   if (!kennung || kennung.startsWith('--') || !wurzel) { hilfe(); process.exit(1); }
 
   const ordner = path.resolve(wurzel, kennung);
   fs.mkdirSync(ordner, { recursive: true });
-  const vermerkt = [];
-  let cc0Nummer = 0;
 
-  if (suche) {
-    for (const quelle of [opengameart, kenney]) {
-      const treffer = await quelle.finde(suche, jeQuelle);
-      for (const fund of treffer) {
-        const endung = path.extname(fund.pfad || fund.url).toLowerCase();
-        cc0Nummer += 1;
-        const dateiname = `cc0-${cc0Nummer}${endung}`;
-        const daten = fund.pfad ? fs.readFileSync(fund.pfad) : await lade(fund.url);
-        if (!daten) { cc0Nummer -= 1; continue; }
-        fs.writeFileSync(path.join(ordner, dateiname), daten);
-        vermerkt.push({ datei: dateiname, titel: fund.titel, herkunft: fund.herkunft,
-          lizenz: fund.lizenz, quelle: fund.quelle });
-        console.log(`${dateiname.padEnd(12)}${Math.round(daten.length / 1024)} KB  ${fund.quelle}  ${fund.titel}`);
-      }
-    }
-  }
-
-  if (kiWuensche.length && elevenlabs.schluesselFehlt()) {
-    console.log('ELEVENLABS_API_KEY fehlt, die erzeugten Vorschlaege entfallen.');
-  } else {
-    for (const [i, wunsch] of kiWuensche.entries()) {
-      const klang = await elevenlabs.erzeuge(wunsch, { sekunden });
-      const dateiname = `ki-${i + 1}.mp3`;
-      fs.writeFileSync(path.join(ordner, dateiname), klang.daten);
-      vermerkt.push({ datei: dateiname, titel: wunsch, herkunft: klang.herkunft,
-        lizenz: klang.lizenz, quelle: klang.quelle });
-      console.log(`${dateiname.padEnd(12)}${Math.round(klang.daten.length / 1024)} KB  ${klang.quelle}  ${wunsch.slice(0, 44)}`);
-    }
-  }
+  const vermerkt = [
+    ...(suche ? await sammleCc0(ordner, suche, Number(argument('cc0', '2'))) : []),
+    ...(kiWuensche.length ? await erzeugeKi(ordner, kiWuensche, Number(argument('sekunden', '1.2'))) : []),
+  ];
 
   if (!vermerkt.length) { console.log('Keine Kandidaten gefunden.'); return; }
   schreibeNachweis(ordner, vermerkt);
