@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { naechsteNummer } from '../bin/vorschlaege.mjs';
+import { naechsteNummer, istBrauchbar } from '../bin/vorschlaege.mjs';
 
 test('ein leerer Ordner faengt bei eins an', () => {
   assert.equal(naechsteNummer([], 'ki'), 1);
@@ -24,4 +24,15 @@ test('Luecken fuellt es nicht auf, es zaehlt hinter dem Hoechsten weiter', () =>
 
 test('Dateien ohne Nummer stoeren nicht', () => {
   assert.equal(naechsteNummer(['cc0.ogg', 'cc0-alt.ogg', 'cc0-2.ogg'], 'cc0'), 3);
+});
+
+test('zu lange Kandidaten gelten als unbrauchbar', () => {
+  assert.equal(istBrauchbar(0.6, 0.5), true, 'ein kurzer Ausruf passt');
+  assert.equal(istBrauchbar(1.4, 0.5), true, 'etwas Luft bleibt erlaubt');
+  assert.equal(istBrauchbar(6.6, 0.5), false, 'eine Sammeldatei ist kein Einzelklang');
+  assert.equal(istBrauchbar(41.7, 1.2), false);
+});
+
+test('ohne Messung wird nichts verworfen', () => {
+  assert.equal(istBrauchbar(null, 0.5), true);
 });

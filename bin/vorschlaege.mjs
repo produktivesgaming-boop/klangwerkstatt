@@ -1,11 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import * as opengameart from '../quellen/opengameart.mjs';
 import * as kenney from '../quellen/kenney.mjs';
 import * as elevenlabs from '../quellen/elevenlabs.mjs';
 
 const NACHWEIS = 'herkunft.json';
+const LAENGENFAKTOR = 3;
+const MINDESTFENSTER = 2;
 
 function hilfe() {
   console.log(`Klangwerkstatt -- Kandidaten fuer einen Klang sammeln
@@ -68,15 +71,40 @@ function ablegen(ordner, dateiname, daten, fund) {
     lizenz: fund.lizenz, quelle: fund.quelle };
 }
 
-async function sammleCc0(ordner, suche, jeQuelle) {
+function dauerVon(pfad) {
+  try {
+    const ausgabe = execFileSync('ffprobe',
+      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', pfad],
+      { encoding: 'utf8' });
+    return Number(ausgabe.trim()) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function istBrauchbar(dauer, gewuenscht) {
+  if (dauer === null) return true;
+  return dauer <= Math.max(gewuenscht * LAENGENFAKTOR, MINDESTFENSTER);
+}
+
+async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
   const vermerkt = [];
-  const ab = naechsteNummer(fs.readdirSync(ordner), 'cc0');
+  let ab = naechsteNummer(fs.readdirSync(ordner), 'cc0');
   for (const quelle of [opengameart, kenney]) {
     for (const fund of await quelle.finde(suche, jeQuelle)) {
       const daten = fund.pfad ? fs.readFileSync(fund.pfad) : await lade(fund.url);
       if (!daten) continue;
       const endung = path.extname(fund.pfad || fund.url).toLowerCase();
-      vermerkt.push(ablegen(ordner, `cc0-${ab + vermerkt.length}${endung}`, daten, fund));
+      const dateiname = `cc0-${ab}${endung}`;
+      const eintrag = ablegen(ordner, dateiname, daten, fund);
+      const dauer = dauerVon(path.join(ordner, dateiname));
+      if (!istBrauchbar(dauer, sekunden)) {
+        fs.unlinkSync(path.join(ordner, dateiname));
+        console.log(`   verworfen: ${fund.titel} ist ${dauer.toFixed(1)} s lang, gesucht sind ${sekunden} s`);
+        continue;
+      }
+      vermerkt.push(eintrag);
+      ab += 1;
     }
   }
   return vermerkt;
@@ -101,6 +129,7 @@ async function sammle() {
   const wurzel = argument('ordner');
   const suche = argument('suche');
   const kiWuensche = alleArgumente('ki');
+  const sekunden = Number(argument('sekunden', '1.2'));
 
   if (!kennung || kennung.startsWith('--') || !wurzel) { hilfe(); process.exit(1); }
 
@@ -108,8 +137,8 @@ async function sammle() {
   fs.mkdirSync(ordner, { recursive: true });
 
   const vermerkt = [
-    ...(suche ? await sammleCc0(ordner, suche, Number(argument('cc0', '2'))) : []),
-    ...(kiWuensche.length ? await erzeugeKi(ordner, kiWuensche, Number(argument('sekunden', '1.2'))) : []),
+    ...(suche ? await sammleCc0(ordner, suche, Number(argument('cc0', '2')), sekunden) : []),
+    ...(kiWuensche.length ? await erzeugeKi(ordner, kiWuensche, sekunden) : []),
   ];
 
   if (!vermerkt.length) { console.log('Keine Kandidaten gefunden.'); return; }
