@@ -29,3 +29,9 @@ test('der Grundton haengt hinten an, damit die Beschreibung fuehrt', () => {
   assert.ok(auftrag.startsWith('wet gore hit'), 'die eigentliche Beschreibung steht vorn');
   assert.ok(auftrag.endsWith(GRUNDTON));
 });
+
+test('drei Treuegrade reichen fuer drei KI-Vorschlaege je Runde', () => {
+  const dreiRunden = [0, 1, 2].map(treueFuer);
+
+  assert.equal(new Set(dreiRunden).size, 3, 'auch drei Vorschlaege muessen sich unterscheiden');
+});

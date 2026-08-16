@@ -150,11 +150,19 @@ function nimmSammeldatei(ordner, dateiname, fund, gewuenscht, ab) {
     { ...fund, titel: `${fund.titel}, Teil ${i + 1}` })).filter(Boolean);
 }
 
+// Wie viele Kandidaten je Quelle (Jonas, 16.08.2026): Freesound ist die groesste
+// und liefert am zuverlaessigsten, Kenney ist klein und sehr gleichfoermig.
+const JE_QUELLE = { 'Freesound (CC0)': 3, 'OpenGameArt (CC0)': 2, 'Kenney (CC0)': 1 };
+
+function anzahlFuer(quelle, standard) {
+  return JE_QUELLE[quelle.NAME] ?? standard;
+}
+
 async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
   const vermerkt = [];
   let ab = naechsteNummer(fs.readdirSync(ordner), 'cc0');
   for (const quelle of [freesound, opengameart, kenney]) {
-    for (const fund of await quelle.finde(suche, jeQuelle)) {
+    for (const fund of await quelle.finde(suche, anzahlFuer(quelle, jeQuelle))) {
       // Beim Zerlegen codiert ffmpeg neu, die Teile sind also nie bitgleich mit
       // denen eines frueheren Laufs. Deshalb entscheidet hier der Titel, sonst
       // sammelt sich dieselbe Aufnahme bei jedem Lauf ein weiteres Mal an.

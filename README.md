@@ -86,7 +86,10 @@ passiert, alle vier Stuecke mussten aus der Git-Historie geholt werden).
 
 Quellen
 -------
-Freesound, OpenGameArt und Kenney, in dieser Reihenfolge. Freesound ist die
+Freesound, OpenGameArt und Kenney, in dieser Reihenfolge. Je Vorschlagsrunde
+kommen 3 aus Freesound, 2 aus OpenGameArt und 1 von Kenney, dazu 3 aus der KI
+(Jonas, 16.08.2026): Freesound ist die groesste und zuverlaessigste Quelle,
+Kenney die kleinste und gleichfoermigste. Freesound ist die
 groesste und die einzige mit echter Volltextsuche (die anderen verknuepfen
 streng UND, dort gehoeren EINZELWOERTER in `--suche`). Geholt wird die
 Vorschau-mp3, nicht das Original: das ist oft 24 Bit und viele Megabyte gross,
