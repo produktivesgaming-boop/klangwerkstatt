@@ -66,11 +66,25 @@ export function naechsteNummer(dateinamen, praefix) {
   return belegt.length ? Math.max(...belegt) + 1 : 1;
 }
 
+// Der Nachweis wird SOFORT je Datei fortgeschrieben, nicht erst am Ende des
+// Laufs: bricht eine Quelle mittendrin ab, laegen sonst Dateien ohne Lizenz im
+// Ordner und waeren nicht mehr zuzuordnen.
 function ablegen(ordner, dateiname, daten, fund) {
   fs.writeFileSync(path.join(ordner, dateiname), daten);
   melde(dateiname, daten, fund.quelle, fund.titel);
-  return { datei: dateiname, titel: fund.titel, herkunft: fund.herkunft,
+  const eintrag = { datei: dateiname, titel: fund.titel, herkunft: fund.herkunft,
     lizenz: fund.lizenz, quelle: fund.quelle };
+  schreibeNachweis(ordner, [eintrag]);
+  return eintrag;
+}
+
+function loesche(ordner, dateiname) {
+  const pfadDerDatei = path.join(ordner, dateiname);
+  if (fs.existsSync(pfadDerDatei)) fs.unlinkSync(pfadDerDatei);
+  const pfad = path.join(ordner, NACHWEIS);
+  if (!fs.existsSync(pfad)) return;
+  const bisher = JSON.parse(fs.readFileSync(pfad, 'utf8'));
+  fs.writeFileSync(pfad, JSON.stringify(bisher.filter((eintrag) => eintrag.datei !== dateiname), null, 2), 'utf8');
 }
 
 function dauerVon(pfad) {
@@ -94,13 +108,13 @@ function nimmSammeldatei(ordner, dateiname, fund, gewuenscht, ab) {
   const erlaubt = Math.max(gewuenscht * LAENGENFAKTOR, MINDESTFENSTER);
   const teile = zerlege(pfad, erlaubt, TEILE_JE_SAMMELDATEI);
   raeumeAuf(pfad);
+  loesche(ordner, dateiname);
 
   return teile.map((teil, i) => {
     const name = `cc0-${ab + i}.ogg`;
     fs.renameSync(teil.datei, path.join(ordner, name));
-    melde(name, fs.readFileSync(path.join(ordner, name)), fund.quelle, `${fund.titel} (${teil.dauer} s)`);
-    return { datei: name, titel: `${fund.titel}, Teil ${i + 1}`, herkunft: fund.herkunft,
-      lizenz: fund.lizenz, quelle: fund.quelle };
+    return ablegen(ordner, name, fs.readFileSync(path.join(ordner, name)),
+      { ...fund, titel: `${fund.titel}, Teil ${i + 1}` });
   });
 }
 
@@ -125,7 +139,7 @@ async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
       }
 
       if (!istBrauchbar(dauer, sekunden)) {
-        fs.unlinkSync(path.join(ordner, dateiname));
+        loesche(ordner, dateiname);
         console.log(`   verworfen: ${fund.titel} laesst sich nicht in Einzelklaenge trennen`);
         continue;
       }
@@ -168,7 +182,6 @@ async function sammle() {
   ];
 
   if (!vermerkt.length) { console.log('Keine Kandidaten gefunden.'); return; }
-  schreibeNachweis(ordner, vermerkt);
   console.log(`\n${vermerkt.length} Kandidaten in ${ordner}, Herkunft in ${NACHWEIS}`);
 }
 
