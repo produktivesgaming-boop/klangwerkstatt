@@ -11,7 +11,7 @@ export const KLANGPAKETE = [
 ];
 
 const LAGER = path.join(os.homedir(), '.klangwerkstatt', 'kenney');
-const KLANGENDUNGEN = /\.(ogg|wav|mp3)$/i;
+export const KLANGENDUNGEN = /\.(ogg|wav|mp3)$/i;
 
 // Kenney schreibt sein HTML mit EINFACHEN Anfuehrungszeichen. Ein Muster auf
 // href="..." findet den Paketlink nicht und laesst die Seite leer aussehen.

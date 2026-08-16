@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const NACHWEIS = 'herkunft.json';
-const KLANGENDUNGEN = /\.(ogg|wav|mp3)$/i;
+export const KLANGENDUNGEN = /\.(ogg|wav|mp3|flac)$/i;
 
 function hilfe() {
   console.log(`Klangwerkstatt -- gesammelte Vorschlaege als Verzeichnis ausgeben
@@ -43,16 +44,23 @@ function kandidaten(ordner, netzpfad, kennung) {
     }));
 }
 
-const wurzel = argument('ordner');
-if (!wurzel) { hilfe(); process.exit(1); }
-const netzpfad = (argument('netzpfad', '') || '').replace(/\/$/, '');
+function verzeichnis(wurzel, netzpfad) {
+  if (!fs.existsSync(wurzel)) return [];
+  return fs.readdirSync(wurzel, { withFileTypes: true })
+    .filter((eintrag) => eintrag.isDirectory())
+    .map((eintrag) => ({
+      kennung: eintrag.name,
+      kandidaten: kandidaten(path.join(wurzel, eintrag.name), netzpfad, eintrag.name),
+    }))
+    .filter((eintrag) => eintrag.kandidaten.length);
+}
 
-const verzeichnis = !fs.existsSync(wurzel) ? [] : fs.readdirSync(wurzel, { withFileTypes: true })
-  .filter((eintrag) => eintrag.isDirectory())
-  .map((eintrag) => ({
-    kennung: eintrag.name,
-    kandidaten: kandidaten(path.join(wurzel, eintrag.name), netzpfad, eintrag.name),
-  }))
-  .filter((eintrag) => eintrag.kandidaten.length);
+const alsBefehlGestartet = process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
-console.log(JSON.stringify(verzeichnis, null, 2));
+if (alsBefehlGestartet) {
+  const wurzel = argument('ordner');
+  if (!wurzel) { hilfe(); process.exit(1); }
+  const netzpfad = (argument('netzpfad', '') || '').replace(/\/$/, '');
+  console.log(JSON.stringify(verzeichnis(wurzel, netzpfad), null, 2));
+}

@@ -1,7 +1,7 @@
 const SUCHE = 'https://opengameart.org/art-search-advanced';
 const NUR_KLANG = 'field_art_type_tid%5B%5D=13';
 const NUR_CC0 = 'field_art_licenses_tid%5B%5D=4';
-const KLANGENDUNGEN = /\.(wav|ogg|mp3|flac)$/i;
+export const KLANGENDUNGEN = /\.(wav|ogg|mp3|flac)$/i;
 
 export const NAME = 'OpenGameArt (CC0)';
 
