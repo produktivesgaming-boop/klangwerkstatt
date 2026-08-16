@@ -19,6 +19,7 @@ function hilfe() {
   --ordner     Wohin die Stuecke gehoeren (z. B. public/assets/musik)
   --stimmung   Beschreibung fuer das Musikmodell, MEHRFACH angebbar
   --sekunden   Laenge, Standard 45
+  --aufbau     ruhig (Standard) oder treibend, ohne sanftes Intro
 
 Je Stimmung entsteht ein Kandidat <szene>/ki-<n>.mp3, genau wie bei den Klaengen:
 gehoert wird in der Klangvorschau, gewaehlt wird von Hand. Die Stuecke sollen
@@ -67,6 +68,7 @@ async function erzeuge() {
   const wurzel = argument('ordner');
   const stimmungen = alleArgumente('stimmung');
   const sekunden = Number(argument('sekunden', '45'));
+  const aufbau = argument('aufbau', 'ruhig');
 
   if (!szene || szene.startsWith('--') || !wurzel || !stimmungen.length) { hilfe(); process.exit(1); }
   if (elevenlabs.schluesselFehlt()) {
@@ -83,7 +85,7 @@ async function erzeuge() {
   for (const [i, stimmung] of stimmungen.entries()) {
     const nummer = ab + i;
     const seed = saatFuer(szene, nummer);
-    const plan = planFuer(stimmung.split(',').map((teil) => teil.trim()).filter(Boolean), sekunden);
+    const plan = planFuer(stimmung.split(',').map((teil) => teil.trim()).filter(Boolean), sekunden, aufbau);
     const daten = await elevenlabs.komponiere(plan, { seed });
     const datei = `ki-${nummer}.mp3`;
     fs.writeFileSync(path.join(ordner, datei), daten);

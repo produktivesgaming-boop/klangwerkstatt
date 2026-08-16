@@ -52,3 +52,24 @@ test('derselbe Auftrag ergibt dieselbe Saat, verschiedene nicht', () => {
   assert.equal(saatFuer('kampf', 1), saatFuer('kampf', 1));
   assert.equal(new Set([saatFuer('kampf', 1), saatFuer('kampf', 2), saatFuer('menue', 1)]).size, 3);
 });
+
+test('der treibende Aufbau verzichtet auf das sanfte Intro', () => {
+  const ruhig = planFuer(['low toms'], 60, 'ruhig');
+  const treibend = planFuer(['low toms'], 60, 'treibend');
+
+  assert.match(ruhig.chunks[0].positive_styles.join(' '), /sparse/);
+  assert.match(treibend.chunks[0].positive_styles.join(' '), /full energy from the first beat/);
+  assert.ok(treibend.chunks[0].duration_ms > ruhig.chunks[0].duration_ms,
+    'der volle Einstieg soll laenger stehen als ein Intro');
+});
+
+test('auch der treibende Aufbau fuehrt zurueck statt auszufaden', () => {
+  const letzter = planFuer(['low toms'], 60, 'treibend').chunks.at(-1);
+
+  assert.match(letzter.positive_styles.join(' '), /loops back/);
+  assert.match(letzter.positive_styles.join(' '), /no fade out/);
+});
+
+test('ein unbekannter Aufbau faellt auf den ruhigen zurueck', () => {
+  assert.deepEqual(planFuer(['x'], 60, 'gibtsnicht'), planFuer(['x'], 60, 'ruhig'));
+});

@@ -12,11 +12,23 @@ export const KUERZESTER_ABSCHNITT_MS = 3000;
 export const LAENGSTER_ABSCHNITT_MS = 120_000;
 export const HOECHSTENS_ABSCHNITTE = 30;
 
-export const ABSCHNITTE = [
-  { name: 'Intro', anteil: 0.2, zusatz: 'sparse, establishing the theme' },
-  { name: 'Main', anteil: 0.55, zusatz: 'full arrangement, steady groove' },
-  { name: 'Turnaround', anteil: 0.25, zusatz: 'winding back to the opening, no fade out, no ending' },
-];
+// Ein sanftes Intro kostet Drive: dieselben Stilworte klangen mit ruhigem
+// Einstieg deutlich zahmer als ohne (Jonas, 16.08.2026). Ruhiges Aufbauen passt
+// zu Menue und Statistik, nicht zum Kampf.
+export const AUFBAU = {
+  ruhig: [
+    { name: 'Intro', anteil: 0.2, zusatz: 'sparse, establishing the theme' },
+    { name: 'Main', anteil: 0.55, zusatz: 'full arrangement, steady groove' },
+    { name: 'Turnaround', anteil: 0.25, zusatz: 'winding back to the opening, no fade out, no ending' },
+  ],
+  treibend: [
+    { name: 'Drive', anteil: 0.45, zusatz: 'full energy from the first beat, no build-up, relentless' },
+    { name: 'Push', anteil: 0.3, zusatz: 'keeps pushing, adds a counter rhythm, never lets up' },
+    { name: 'Turnaround', anteil: 0.25, zusatz: 'stays at full energy and loops back, no fade out, no ending' },
+  ],
+};
+
+export const ABSCHNITTE = AUFBAU.ruhig;
 
 export const NIE = ['vocals', 'lyrics', 'singing', 'fade out', 'ending', 'applause'];
 
@@ -24,10 +36,10 @@ function begrenzt(millisekunden) {
   return Math.round(Math.min(LAENGSTER_ABSCHNITT_MS, Math.max(KUERZESTER_ABSCHNITT_MS, millisekunden)));
 }
 
-export function planFuer(stile, sekunden) {
+export function planFuer(stile, sekunden, aufbau = 'ruhig') {
   const gesamt = sekunden * 1000;
   return {
-    chunks: ABSCHNITTE.map((abschnitt) => ({
+    chunks: (AUFBAU[aufbau] ?? AUFBAU.ruhig).map((abschnitt) => ({
       text: `[${abschnitt.name}]`,
       duration_ms: begrenzt(gesamt * abschnitt.anteil),
       positive_styles: [...stile, abschnitt.zusatz],
