@@ -8,22 +8,39 @@ const NACHWEIS = 'herkunft.json';
 function hilfe() {
   console.log(`Klangwerkstatt -- Musikstuecke erzeugen
 
-  node bin/musik.mjs <name> --ordner <pfad> --stimmung "<beschreibung>"
+  node bin/musik.mjs <szene> --ordner <pfad> --stimmung "<beschreibung>" ...
                      [--sekunden 45]
 
-  <name>       Dateiname ohne Endung, z. B. "kampf"
-  --ordner     Wohin das Stueck gehoert (z. B. public/assets/musik)
-  --stimmung   Beschreibung fuer das Musikmodell
+  <szene>      Unterordner, z. B. "kampf"
+  --ordner     Wohin die Stuecke gehoeren (z. B. public/assets/musik)
+  --stimmung   Beschreibung fuer das Musikmodell, MEHRFACH angebbar
   --sekunden   Laenge, Standard 45
 
-Anders als bin/vorschlaege.mjs erzeugt das hier GENAU EIN Stueck: Musik dauert
-lange und kostet entsprechend, eine Viererauswahl waere Verschwendung. Das Stueck
-soll SCHLEIFENFAEHIG sein, deshalb gehoert "seamless loop" in die Stimmung.`);
+Je Stimmung entsteht ein Kandidat <szene>/ki-<n>.mp3, genau wie bei den Klaengen:
+gehoert wird in der Klangvorschau, gewaehlt wird von Hand. Die Stuecke sollen
+SCHLEIFENFAEHIG sein, deshalb gehoert "seamless loop" in jede Stimmung.`);
 }
 
 function argument(name, standard = null) {
   const stelle = process.argv.indexOf(`--${name}`);
   return stelle > 0 ? process.argv[stelle + 1] : standard;
+}
+
+function alleArgumente(name) {
+  const werte = [];
+  process.argv.forEach((wert, i) => {
+    if (wert === `--${name}` && process.argv[i + 1]) werte.push(process.argv[i + 1]);
+  });
+  return werte;
+}
+
+function naechsteNummer(ordner) {
+  if (!fs.existsSync(ordner)) return 1;
+  const nummern = fs.readdirSync(ordner)
+    .filter((datei) => datei.startsWith('ki-'))
+    .map((datei) => Number(datei.slice(3).split('.')[0]))
+    .filter((nummer) => Number.isFinite(nummer));
+  return nummern.length ? Math.max(...nummern) + 1 : 1;
 }
 
 function schreibeNachweis(ordner, eintrag) {
@@ -34,27 +51,31 @@ function schreibeNachweis(ordner, eintrag) {
 }
 
 async function erzeuge() {
-  const name = process.argv[2];
-  const ordner = argument('ordner');
-  const stimmung = argument('stimmung');
+  const szene = process.argv[2];
+  const wurzel = argument('ordner');
+  const stimmungen = alleArgumente('stimmung');
   const sekunden = Number(argument('sekunden', '45'));
 
-  if (!name || name.startsWith('--') || !ordner || !stimmung) { hilfe(); process.exit(1); }
+  if (!szene || szene.startsWith('--') || !wurzel || !stimmungen.length) { hilfe(); process.exit(1); }
   if (elevenlabs.schluesselFehlt()) {
     console.error('ELEVENLABS_API_KEY fehlt.');
     process.exit(1);
   }
 
+  const ordner = path.resolve(wurzel, szene);
   fs.mkdirSync(ordner, { recursive: true });
-  const daten = await elevenlabs.komponiere(stimmung, sekunden);
-  const datei = `${name}.mp3`;
-  fs.writeFileSync(path.join(ordner, datei), daten);
+  const ab = naechsteNummer(ordner);
 
-  schreibeNachweis(ordner, {
-    datei, titel: stimmung, herkunft: 'https://elevenlabs.io',
-    lizenz: 'KI-generiert', quelle: 'ElevenLabs (KI-generiert)',
-  });
-  console.log(`${datei}  ${Math.round(daten.length / 1024)} KB  ${sekunden} s`);
+  for (const [i, stimmung] of stimmungen.entries()) {
+    const daten = await elevenlabs.komponiere(stimmung, sekunden);
+    const datei = `ki-${ab + i}.mp3`;
+    fs.writeFileSync(path.join(ordner, datei), daten);
+    schreibeNachweis(ordner, {
+      datei, titel: stimmung, herkunft: 'https://elevenlabs.io',
+      lizenz: 'KI-generiert', quelle: 'ElevenLabs (KI-generiert)',
+    });
+    console.log(`${szene}/${datei}  ${Math.round(daten.length / 1024)} KB  ${sekunden} s`);
+  }
 }
 
 const alsBefehlGestartet = process.argv[1]
