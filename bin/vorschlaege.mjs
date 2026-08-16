@@ -7,6 +7,7 @@ import * as opengameart from '../quellen/opengameart.mjs';
 import * as kenney from '../quellen/kenney.mjs';
 import * as elevenlabs from '../quellen/elevenlabs.mjs';
 import { zerlege, istSammeldatei, raeumeAuf } from '../quellen/zerlegen.mjs';
+import { treueFuer } from '../quellen/promptstil.mjs';
 
 const NACHWEIS = 'herkunft.json';
 const LAENGENFAKTOR = 3;
@@ -210,7 +211,7 @@ async function erzeugeKi(ordner, wuensche, sekunden) {
   const offen = wuensche.filter((wunsch) => !schonBestellt(ordner, wunsch));
   const ab = naechsteNummer(fs.readdirSync(ordner), 'ki');
   for (const [i, wunsch] of offen.entries()) {
-    const klang = await elevenlabs.erzeuge(wunsch, { sekunden });
+    const klang = await elevenlabs.erzeuge(wunsch, { sekunden, treue: treueFuer(i) });
     const eintrag = ablegen(ordner, `ki-${ab + i}.mp3`, klang.daten, { ...klang, titel: wunsch });
     if (eintrag) vermerkt.push(eintrag);
   }

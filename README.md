@@ -60,3 +60,26 @@ EINBINDEN
 Danach ruft das Projekt `node werkzeuge/klangwerkstatt/bin/vorschlaege.mjs` auf.
 Welcher Klang im Spiel wofuer benutzt wird, bleibt Sache des Projekts; hier
 liegt nur die Beschaffung.
+
+Auftraege an das KI-Modell schreiben
+------------------------------------
+Die Regeln stehen als Modul in `quellen/promptstil.mjs`, samt Begruendung. Kurz:
+
+  - KURZ statt erzaehlend. "arrow impact into flesh, wet meaty thud" schlaegt
+    einen ganzen Satz. Lange Beschreibungen verwaessern den Auftrag.
+  - Audio-Fachbegriffe wirken: foley, close-mic, dry, transient.
+  - Struktur: Objekt, Aktion, MATERIAL, RAUM, Klangcharakter. Ohne Material
+    fehlt die Textur, ohne Raum wuerfelt das Modell den Hall.
+  - Ein Klang je Auftrag, nie eine Abfolge.
+
+`GRUNDTON` haengt an jede Beschreibung den Studioteil an, `TREUESTUFEN` streut
+den prompt_influence ueber die Vorschlaege einer Runde. Ohne diese Streuung
+bekommt man vier Fassungen derselben Idee statt vier Ideen.
+
+Musik ist NICHT reproduzierbar
+------------------------------
+Derselbe Auftragstext liefert bei `/v1/music` jedes Mal eine NEUE Komposition,
+nur die Stimmung stimmt ueberein. Wer ein bestimmtes Stueck wiederhaben will,
+braucht dessen `seed`; `komponiere()` nimmt ihn entgegen. Eine Bestellung ohne
+seed wirft eine getroffene Wahl unwiederbringlich weg (am 16.08.2026 in Horde
+passiert, alle vier Stuecke mussten aus der Git-Historie geholt werden).
