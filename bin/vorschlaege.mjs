@@ -134,14 +134,15 @@ function nimmSammeldatei(ordner, dateiname, fund, gewuenscht, ab) {
   raeumeAuf(pfad);
   loesche(ordner, dateiname);
 
-  return teile.map((teil, i) => {
-    const name = `cc0-${ab + i}.ogg`;
-    fs.renameSync(teil.datei, path.join(ordner, name));
-    const daten = fs.readFileSync(path.join(ordner, name));
-    const eintrag = ablegen(ordner, name, daten, { ...fund, titel: `${fund.titel}, Teil ${i + 1}` });
-    if (!eintrag) fs.unlinkSync(path.join(ordner, name));
-    return eintrag;
-  }).filter(Boolean);
+  // Erst ALLE Teile einlesen und ihre Zwischendateien wegraeumen, dann ablegen:
+  // die Zwischendateien liegen im selben Ordner, und ablegen prueft gegen den
+  // Ordnerinhalt. Sonst hielte es jeden Teil fuer eine Dublette seiner selbst,
+  // und kein einziger Teil einer Sammeldatei kaeme je an.
+  const inhalte = teile.map((teil) => fs.readFileSync(teil.datei));
+  for (const teil of teile) fs.unlinkSync(teil.datei);
+
+  return inhalte.map((daten, i) => ablegen(ordner, `cc0-${ab + i}.ogg`, daten,
+    { ...fund, titel: `${fund.titel}, Teil ${i + 1}` })).filter(Boolean);
 }
 
 async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
@@ -149,6 +150,13 @@ async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
   let ab = naechsteNummer(fs.readdirSync(ordner), 'cc0');
   for (const quelle of [opengameart, kenney]) {
     for (const fund of await quelle.finde(suche, jeQuelle)) {
+      // Beim Zerlegen codiert ffmpeg neu, die Teile sind also nie bitgleich mit
+      // denen eines frueheren Laufs. Deshalb entscheidet hier der Titel, sonst
+      // sammelt sich dieselbe Aufnahme bei jedem Lauf ein weiteres Mal an.
+      if (schonGeholt(ordner, fund.titel)) {
+        console.log(`   schon vorhanden, uebersprungen: ${fund.titel}`);
+        continue;
+      }
       const daten = fund.pfad ? fs.readFileSync(fund.pfad) : await lade(fund.url);
       if (!daten) continue;
       const endung = path.extname(fund.pfad || fund.url).toLowerCase();
@@ -177,17 +185,37 @@ async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
   return vermerkt;
 }
 
+export function schonGeholt(ordner, titel) {
+  const pfad = path.join(ordner, NACHWEIS);
+  if (!fs.existsSync(pfad)) return false;
+  return JSON.parse(fs.readFileSync(pfad, 'utf8'))
+    .some((eintrag) => eintrag.titel === titel || eintrag.titel.startsWith(`${titel}, Teil `));
+}
+
+export function schonBestellt(ordner, wunsch) {
+  const pfad = path.join(ordner, NACHWEIS);
+  if (!fs.existsSync(pfad)) return false;
+  return JSON.parse(fs.readFileSync(pfad, 'utf8')).some((eintrag) => eintrag.titel === wunsch);
+}
+
 async function erzeugeKi(ordner, wuensche, sekunden) {
   if (elevenlabs.schluesselFehlt()) {
     console.log('ELEVENLABS_API_KEY fehlt, die erzeugten Vorschlaege entfallen.');
     return [];
   }
+  // Ein Wunsch, zu dem schon ein Stueck im Nachweis steht, wird NICHT erneut
+  // bestellt: sonst kostet jeder weitere Lauf denselben Auftrag noch einmal Geld
+  // und legt eine weitere Fassung desselben Klangs daneben.
   const vermerkt = [];
+  const offen = wuensche.filter((wunsch) => !schonBestellt(ordner, wunsch));
   const ab = naechsteNummer(fs.readdirSync(ordner), 'ki');
-  for (const [i, wunsch] of wuensche.entries()) {
+  for (const [i, wunsch] of offen.entries()) {
     const klang = await elevenlabs.erzeuge(wunsch, { sekunden });
     const eintrag = ablegen(ordner, `ki-${ab + i}.mp3`, klang.daten, { ...klang, titel: wunsch });
     if (eintrag) vermerkt.push(eintrag);
+  }
+  for (const wunsch of wuensche.filter((einer) => schonBestellt(ordner, einer))) {
+    console.log(`   schon bestellt, uebersprungen: ${wunsch.slice(0, 50)}`);
   }
   return vermerkt;
 }
