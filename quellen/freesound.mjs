@@ -7,7 +7,18 @@
  */
 const SUCHE = 'https://freesound.org/apiv2/search/text/';
 
-export const NAME = 'Freesound (CC0)';
+export const NAME = 'Freesound';
+
+// CC-BY dazuzunehmen lohnt sich messbar (Jonas, 16.08.2026): bei "creature death"
+// verdreifacht sich die Auswahl, bei "lawn mower engine" verdoppelt sie sich fast.
+// NonCommercial bleibt draussen, es brachte nur wenige Treffer mehr und verbaut
+// den kommerziellen Weg. Jeder CC-BY-Klang MUSS in die Credits, dafuer wandert
+// der urheber mit in den Nachweis.
+const LIZENZEN = '(license:"Creative Commons 0" OR license:"Attribution")';
+
+export function lizenzKuerzel(lizenz) {
+  return /attribution/i.test(lizenz ?? '') ? 'CC-BY' : 'CC0';
+}
 
 export function schluesselFehlt() {
   return !process.env.FREESOUND_API_KEY;
@@ -22,8 +33,8 @@ function vorschauVon(treffer) {
 export async function finde(suche, hoechstens = 2, sekunden = 2) {
   if (schluesselFehlt()) return [];
 
-  const felder = 'id,name,license,previews,url,duration';
-  const filter = `license:"Creative Commons 0" duration:[0.1 TO ${Math.max(2, sekunden * 8)}]`;
+  const felder = 'id,name,license,previews,url,duration,username';
+  const filter = `${LIZENZEN} duration:[0.1 TO ${Math.max(2, sekunden * 8)}]`;
   const adresse = `${SUCHE}?query=${encodeURIComponent(suche)}`
     + `&filter=${encodeURIComponent(filter)}&fields=${felder}&page_size=15&sort=rating_desc`;
 
@@ -39,7 +50,8 @@ export async function finde(suche, hoechstens = 2, sekunden = 2) {
     .map((einer) => ({
       titel: einer.name,
       herkunft: einer.url,
-      lizenz: 'CC0',
+      lizenz: lizenzKuerzel(einer.license),
+      urheber: einer.username,
       quelle: NAME,
       url: vorschauVon(einer),
     }));

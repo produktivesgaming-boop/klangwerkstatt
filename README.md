@@ -95,6 +95,11 @@ streng UND, dort gehoeren EINZELWOERTER in `--suche`). Geholt wird die
 Vorschau-mp3, nicht das Original: das ist oft 24 Bit und viele Megabyte gross,
 waehrend im Spiel ohnehin eine kurze mp3 landet.
 
+Freesound liefert CC0 UND CC-BY. Der Zugewinn ist messbar: bei "creature death"
+verdreifacht sich die Auswahl, bei "lawn mower engine" verdoppelt sie sich fast.
+NonCommercial bleibt draussen. Jeder CC-BY-Klang traegt seinen `urheber` im
+Nachweis, denn ohne Namen ist die Nennung wertlos und die Lizenz nicht erfuellt.
+
 Zugangsschluessel stehen in `Life-OS/.secrets/credentials.env` und werden von
 `quellen/geheimnisse.mjs` gesucht. Weil Horde und Gruenspiel NEBEN Life-OS
 liegen und nicht darunter, wird auf jeder Ebene auch im Life-OS-Ordner
