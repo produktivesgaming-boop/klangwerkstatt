@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,10 +67,33 @@ export function naechsteNummer(dateinamen, praefix) {
   return belegt.length ? Math.max(...belegt) + 1 : 1;
 }
 
+export function pruefsumme(daten) {
+  return crypto.createHash('sha1').update(daten).digest('hex');
+}
+
+// Dieselbe Aufnahme taucht in beiden Quellen auf, und ein Fund landet auch mal
+// zweimal in derselben Trefferliste. Ohne diesen Vergleich stehen zwei Knoepfe
+// nebeneinander, die gleich klingen (Jonas, 16.08.2026).
+export function schonVorhanden(neueDaten, bestand) {
+  const neu = pruefsumme(neueDaten);
+  return bestand.find(({ daten }) => pruefsumme(daten) === neu)?.datei ?? null;
+}
+
+function bestandVon(ordner) {
+  return fs.readdirSync(ordner)
+    .filter((datei) => datei !== NACHWEIS)
+    .map((datei) => ({ datei, daten: fs.readFileSync(path.join(ordner, datei)) }));
+}
+
 // Der Nachweis wird SOFORT je Datei fortgeschrieben, nicht erst am Ende des
 // Laufs: bricht eine Quelle mittendrin ab, laegen sonst Dateien ohne Lizenz im
 // Ordner und waeren nicht mehr zuzuordnen.
 function ablegen(ordner, dateiname, daten, fund) {
+  const gleiche = schonVorhanden(daten, bestandVon(ordner));
+  if (gleiche) {
+    console.log(`   uebersprungen: ${fund.titel} ist Wort fuer Wort ${gleiche}`);
+    return null;
+  }
   fs.writeFileSync(path.join(ordner, dateiname), daten);
   melde(dateiname, daten, fund.quelle, fund.titel);
   const eintrag = { datei: dateiname, titel: fund.titel, herkunft: fund.herkunft,
@@ -113,9 +137,11 @@ function nimmSammeldatei(ordner, dateiname, fund, gewuenscht, ab) {
   return teile.map((teil, i) => {
     const name = `cc0-${ab + i}.ogg`;
     fs.renameSync(teil.datei, path.join(ordner, name));
-    return ablegen(ordner, name, fs.readFileSync(path.join(ordner, name)),
-      { ...fund, titel: `${fund.titel}, Teil ${i + 1}` });
-  });
+    const daten = fs.readFileSync(path.join(ordner, name));
+    const eintrag = ablegen(ordner, name, daten, { ...fund, titel: `${fund.titel}, Teil ${i + 1}` });
+    if (!eintrag) fs.unlinkSync(path.join(ordner, name));
+    return eintrag;
+  }).filter(Boolean);
 }
 
 async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
@@ -128,6 +154,7 @@ async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
       const endung = path.extname(fund.pfad || fund.url).toLowerCase();
       const dateiname = `cc0-${ab}${endung}`;
       const eintrag = ablegen(ordner, dateiname, daten, fund);
+      if (!eintrag) continue;
       const dauer = dauerVon(path.join(ordner, dateiname));
 
       if (istSammeldatei(dauer, sekunden)) {
@@ -159,7 +186,8 @@ async function erzeugeKi(ordner, wuensche, sekunden) {
   const ab = naechsteNummer(fs.readdirSync(ordner), 'ki');
   for (const [i, wunsch] of wuensche.entries()) {
     const klang = await elevenlabs.erzeuge(wunsch, { sekunden });
-    vermerkt.push(ablegen(ordner, `ki-${ab + i}.mp3`, klang.daten, { ...klang, titel: wunsch }));
+    const eintrag = ablegen(ordner, `ki-${ab + i}.mp3`, klang.daten, { ...klang, titel: wunsch });
+    if (eintrag) vermerkt.push(eintrag);
   }
   return vermerkt;
 }
