@@ -25,3 +25,19 @@ export async function erzeuge(beschreibung, { sekunden = 1.2, treue = 0.75 } = {
     daten: Buffer.from(await antwort.arrayBuffer()),
   };
 }
+
+const MUSIK_ENDPUNKT = 'https://api.elevenlabs.io/v1/music';
+
+export async function komponiere(stimmung, sekunden) {
+  const schluessel = process.env.ELEVENLABS_API_KEY;
+  if (!schluessel) throw new Error('ELEVENLABS_API_KEY ist nicht gesetzt.');
+
+  const antwort = await fetch(MUSIK_ENDPUNKT, {
+    method: 'POST',
+    headers: { 'xi-api-key': schluessel, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: stimmung, music_length_ms: Math.round(sekunden * 1000) }),
+  });
+  if (!antwort.ok) throw new Error(`${antwort.status} ${await antwort.text()}`);
+
+  return Buffer.from(await antwort.arrayBuffer());
+}
