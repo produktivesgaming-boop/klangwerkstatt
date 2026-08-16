@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as elevenlabs from '../quellen/elevenlabs.mjs';
+import { ladeGeheimnisse } from '../quellen/geheimnisse.mjs';
+
+ladeGeheimnisse();
 
 const NACHWEIS = 'herkunft.json';
 

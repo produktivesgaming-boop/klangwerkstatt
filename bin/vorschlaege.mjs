@@ -5,9 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import * as opengameart from '../quellen/opengameart.mjs';
 import * as kenney from '../quellen/kenney.mjs';
+import * as freesound from '../quellen/freesound.mjs';
 import * as elevenlabs from '../quellen/elevenlabs.mjs';
 import { zerlege, istSammeldatei, raeumeAuf } from '../quellen/zerlegen.mjs';
 import { treueFuer } from '../quellen/promptstil.mjs';
+import { ladeGeheimnisse } from '../quellen/geheimnisse.mjs';
+
+ladeGeheimnisse();
 
 const NACHWEIS = 'herkunft.json';
 const LAENGENFAKTOR = 3;
@@ -149,7 +153,7 @@ function nimmSammeldatei(ordner, dateiname, fund, gewuenscht, ab) {
 async function sammleCc0(ordner, suche, jeQuelle, sekunden) {
   const vermerkt = [];
   let ab = naechsteNummer(fs.readdirSync(ordner), 'cc0');
-  for (const quelle of [opengameart, kenney]) {
+  for (const quelle of [freesound, opengameart, kenney]) {
     for (const fund of await quelle.finde(suche, jeQuelle)) {
       // Beim Zerlegen codiert ffmpeg neu, die Teile sind also nie bitgleich mit
       // denen eines frueheren Laufs. Deshalb entscheidet hier der Titel, sonst

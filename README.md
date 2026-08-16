@@ -83,3 +83,17 @@ nur die Stimmung stimmt ueberein. Wer ein bestimmtes Stueck wiederhaben will,
 braucht dessen `seed`; `komponiere()` nimmt ihn entgegen. Eine Bestellung ohne
 seed wirft eine getroffene Wahl unwiederbringlich weg (am 16.08.2026 in Horde
 passiert, alle vier Stuecke mussten aus der Git-Historie geholt werden).
+
+Quellen
+-------
+Freesound, OpenGameArt und Kenney, in dieser Reihenfolge. Freesound ist die
+groesste und die einzige mit echter Volltextsuche (die anderen verknuepfen
+streng UND, dort gehoeren EINZELWOERTER in `--suche`). Geholt wird die
+Vorschau-mp3, nicht das Original: das ist oft 24 Bit und viele Megabyte gross,
+waehrend im Spiel ohnehin eine kurze mp3 landet.
+
+Zugangsschluessel stehen in `Life-OS/.secrets/credentials.env` und werden von
+`quellen/geheimnisse.mjs` gesucht. Weil Horde und Gruenspiel NEBEN Life-OS
+liegen und nicht darunter, wird auf jeder Ebene auch im Life-OS-Ordner
+nachgesehen. Fehlt ein Schluessel, entfaellt die betreffende Quelle
+stillschweigend und die anderen laufen weiter.
