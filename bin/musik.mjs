@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as elevenlabs from '../quellen/elevenlabs.mjs';
 import { ladeGeheimnisse } from '../quellen/geheimnisse.mjs';
+import { planFuer, dauerVon } from '../quellen/komposition.mjs';
 
 ladeGeheimnisse();
 
@@ -38,7 +39,7 @@ function alleArgumente(name) {
 }
 
 // Aus Szene und Nummer statt aus dem Zufall: derselbe Auftrag ergibt denselben
-// seed, und die Zahl steht im Nachweis, statt nur im Kopf des Modells.
+// seed, und die Zahl steht im Nachweis statt nur im Kopf des Modells.
 export function saatFuer(szene, nummer) {
   let wert = 0;
   for (const zeichen of `${szene}-${nummer}`) wert = (wert * 31 + zeichen.charCodeAt(0)) % 2147483647;
@@ -77,18 +78,22 @@ async function erzeuge() {
   fs.mkdirSync(ordner, { recursive: true });
   const ab = naechsteNummer(ordner);
 
-  // Der seed wird HIER vergeben und im Nachweis festgehalten: die Musik taucht
-  // in keiner History auf, ohne ihn ist ein Stueck spaeter nicht nachbestellbar.
+  // Der seed wird HIER vergeben und im Nachweis festgehalten: Musik taucht in
+  // keiner History auf, und ohne seed ist ein Stueck nicht nachbestellbar.
   for (const [i, stimmung] of stimmungen.entries()) {
-    const seed = saatFuer(szene, ab + i);
-    const daten = await elevenlabs.komponiere(stimmung, sekunden, { seed });
-    const datei = `ki-${ab + i}.mp3`;
+    const nummer = ab + i;
+    const seed = saatFuer(szene, nummer);
+    const plan = planFuer(stimmung.split(',').map((teil) => teil.trim()).filter(Boolean), sekunden);
+    const daten = await elevenlabs.komponiere(plan, { seed });
+    const datei = `ki-${nummer}.mp3`;
     fs.writeFileSync(path.join(ordner, datei), daten);
     schreibeNachweis(ordner, {
       datei, titel: stimmung, herkunft: 'https://elevenlabs.io',
-      lizenz: 'KI-generiert', quelle: 'ElevenLabs (KI-generiert)', seed,
+      lizenz: 'KI-generiert', quelle: 'ElevenLabs (KI-generiert)',
+      seed, abschnitte: plan.chunks.map((teil) => teil.duration_ms / 1000),
     });
-    console.log(`${szene}/${datei}  ${Math.round(daten.length / 1024)} KB  ${sekunden} s  seed ${seed}`);
+    console.log(`${szene}/${datei}  ${Math.round(daten.length / 1024)} KB  `
+      + `${dauerVon(plan)} s in ${plan.chunks.length} Abschnitten  seed ${seed}`);
   }
 }
 

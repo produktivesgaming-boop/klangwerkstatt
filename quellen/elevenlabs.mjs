@@ -45,9 +45,14 @@ export async function erzeuge(beschreibung, { sekunden = 1.2, treue = 0.75, schl
 
 const MUSIK_ENDPUNKT = 'https://api.elevenlabs.io/v1/music';
 
-// force_instrumental haelt Gesang zuverlaessig heraus, was ein Prompt allein nicht
-// schafft; der seed macht dieselbe Bestellung wiederholbar, wie im ganzen Projekt.
-export async function komponiere(stimmung, sekunden, { seed = null } = {}) {
+// Komponiert wird IMMER ueber einen Plan, nie ueber einen blossen Auftragstext
+// (Jonas, 16.08.2026). Nur mit Plan nimmt die API einen seed an (mit prompt
+// antwortet sie 422), und nur mit seed ist ein Stueck spaeter nachbestellbar.
+// Der Plan bestimmt ausserdem die Abschnitte, sodass das letzte Stueck zum
+// Anfang zurueckfuehrt, statt auszufaden. Gesang haelt der Plan ueber seine
+// negative_styles heraus; force_instrumental waere hier ein Fehler, das nimmt
+// die Schnittstelle nur zusammen mit prompt an (422, gemessen 16.08.2026).
+export async function komponiere(plan, { seed = null, dauernGenau = true } = {}) {
   const schluessel = process.env.ELEVENLABS_API_KEY;
   if (!schluessel) throw new Error('ELEVENLABS_API_KEY ist nicht gesetzt.');
 
@@ -55,10 +60,10 @@ export async function komponiere(stimmung, sekunden, { seed = null } = {}) {
     method: 'POST',
     headers: { 'xi-api-key': schluessel, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      prompt: stimmung,
-      music_length_ms: Math.round(sekunden * 1000),
+      composition_plan: plan,
       model_id: MUSIKMODELL,
-      force_instrumental: true,
+      respect_sections_durations: dauernGenau,
+      store_for_inpainting: true,
       ...(seed === null ? {} : { seed }),
     }),
   });
