@@ -26,6 +26,14 @@ export const AUFBAU = {
     { name: 'Push', anteil: 0.3, zusatz: 'keeps pushing, adds a counter rhythm, never lets up' },
     { name: 'Turnaround', anteil: 0.25, zusatz: 'stays at full energy and loops back, no fade out, no ending' },
   ],
+  dynamisch: [
+    { name: 'Theme', anteil: 0.15, zusatz: 'states the main theme with full energy from the first beat' },
+    { name: 'Variation', anteil: 0.2, zusatz: 'the same theme with a new counter melody, more syncopation' },
+    { name: 'Break', anteil: 0.12, zusatz: 'stripped down to very few instruments, quiet and tense, the theme only hinted at' },
+    { name: 'Rebuild', anteil: 0.18, zusatz: 'layers return one by one over a driving bass line' },
+    { name: 'Peak', anteil: 0.2, zusatz: 'full arrangement at the highest energy, the theme stated boldly' },
+    { name: 'Turnaround', anteil: 0.15, zusatz: 'winding back to the opening theme, no fade out, no ending' },
+  ],
 };
 
 export const ABSCHNITTE = AUFBAU.ruhig;
