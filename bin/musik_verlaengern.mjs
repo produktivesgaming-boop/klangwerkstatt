@@ -22,6 +22,7 @@ function hilfe() {
   --fortsetzung  Stilworte fuer den angehaengten Teil, MEHRFACH angebbar
                  (je Angabe entsteht ein eigener Kandidat)
   --sekunden     Laenge des angehaengten Teils, Standard 30
+  --bogen        kurz (Standard) oder dynamisch (Build/Variation/Break/Peak/Turnaround)
 
 Der angehaengte Teil wird in zwei Abschnitte geteilt: eine Steigerung und eine
 Rueckfuehrung zum Anfang, damit das laengere Stueck weiter sauber loopt.`);
@@ -63,14 +64,30 @@ function schreibeNachweis(ordner, eintrag) {
   fs.writeFileSync(pfad, JSON.stringify(neu, null, 2), 'utf8');
 }
 
-// Zwei Abschnitte statt einem: der erste darf steigern, der zweite MUSS
-// zurueckfuehren. Ein einzelner langer Abschnitt endet sonst irgendwo.
-function fortsetzungsabschnitte(stile, sekunden) {
+// Eine laengere Schleife allein bringt nichts, es braucht einen BOGEN (Jonas,
+// 17.08.2026). Der letzte Abschnitt MUSS zum Anfang zurueckfuehren, sonst endet
+// das Stueck irgendwo und die Naht ist hoerbar.
+export const BOEGEN = {
+  kurz: [
+    { name: 'Build', anteil: 0.6, zusatz: 'same instruments and tempo as before, raising the intensity' },
+    { name: 'Turnaround', anteil: 0.4, zusatz: 'winding back to the opening theme, no fade out, no ending' },
+  ],
+  dynamisch: [
+    { name: 'Build', anteil: 0.18, zusatz: 'same instruments and tempo as before, raising the intensity' },
+    { name: 'Variation', anteil: 0.22, zusatz: 'the same theme with a new counter melody, more syncopation' },
+    { name: 'Break', anteil: 0.15, zusatz: 'stripped back to a few instruments, quiet and tense, the theme only hinted at' },
+    { name: 'Peak', anteil: 0.25, zusatz: 'full arrangement at the highest energy, the theme stated boldly over a driving bass' },
+    { name: 'Turnaround', anteil: 0.2, zusatz: 'winding back to the opening theme, no fade out, no ending' },
+  ],
+};
+
+function fortsetzungsabschnitte(stile, sekunden, bogen) {
   const worte = stile.split(',').map((teil) => teil.trim()).filter(Boolean);
-  return [
-    { name: 'Build', dauerMs: Math.round(sekunden * 1000 * 0.6), stile: [...worte, 'same instruments and tempo as before, raising the intensity'] },
-    { name: 'Turnaround', dauerMs: Math.round(sekunden * 1000 * 0.4), stile: [...worte, 'winding back to the opening theme, no fade out, no ending'] },
-  ];
+  return (BOEGEN[bogen] ?? BOEGEN.kurz).map((abschnitt) => ({
+    name: abschnitt.name,
+    dauerMs: Math.round(sekunden * 1000 * abschnitt.anteil),
+    stile: [...worte, abschnitt.zusatz],
+  }));
 }
 
 async function verlaengere() {
@@ -79,6 +96,7 @@ async function verlaengere() {
   const vorlage = argument('vorlage');
   const fortsetzungen = alleArgumente('fortsetzung');
   const sekunden = Number(argument('sekunden', '30'));
+  const bogen = argument('bogen', 'kurz');
 
   if (!szene || szene.startsWith('--') || !wurzel || !vorlage || !fortsetzungen.length) {
     hilfe(); process.exit(1);
@@ -95,8 +113,8 @@ async function verlaengere() {
   const ab = naechsteNummer(ordner);
   for (const [i, stile] of fortsetzungen.entries()) {
     const nummer = ab + i;
-    const plan = planMitBezug(hochgeladen.song_id, dauerMs, fortsetzungsabschnitte(stile, sekunden));
-    const daten = await elevenlabs.komponiere(plan);
+    const plan = planMitBezug(hochgeladen.song_id, dauerMs, fortsetzungsabschnitte(stile, sekunden, bogen));
+    const daten = await elevenlabs.komponiere(plan, { dauernGenau: false });
     const datei = `ki-${nummer}.mp3`;
     fs.writeFileSync(path.join(ordner, datei), daten);
     schreibeNachweis(ordner, {
